@@ -44,12 +44,15 @@ import time
 # 'x' (other player), and whitespace (off-board border to make rules
 # implementation easier).  Coordinates are just indices in this string.
 # You can simply print(board) when debugging.
-N = 19
+N = 7
 W = N + 2
 empty = "\n".join([(N+1)*' '] + N*[' '+N*'.'] + [(N+2)*' '])
 colstr = 'ABCDEFGHJKLMNOPQRST'
 
-N_SIMS = 1000
+N_BLOCKS = 2
+N_FILTERS = 3
+
+N_SIMS = 500
 PUCT_C = 0.1
 PROPORTIONAL_STAGE = 3
 TEMPERATURE = 2
@@ -326,16 +329,18 @@ def encode_position(position, board_transform=None):
 
 
 class ModelServer(Process):
-    def __init__(self, cmd_queue, res_queues, load_snapshot=None):
+    def __init__(self, cmd_queue, res_queues, n_blocks, n_filters, load_snapshot=None):
         super(ModelServer, self).__init__()
         self.cmd_queue = cmd_queue
         self.res_queues = res_queues
+        self.n_blocks = n_blocks
+        self.n_filters = n_filters
         self.load_snapshot = load_snapshot
 
     def run(self):
         try:
             from michi.net import AGZeroModel
-            net = AGZeroModel(N)
+            net = AGZeroModel(N, n_blocks=self.n_blocks, n_filters=self.n_filters)
             net.create()
             if self.load_snapshot is not None:
                 net.load(self.load_snapshot)
@@ -386,10 +391,10 @@ class ModelServer(Process):
 
 
 class GoModel(object):
-    def __init__(self, load_snapshot=None):
+    def __init__(self, n_blocks, n_filters, load_snapshot=None):
         self.cmd_queue = Queue()
         self.res_queues = [Queue() for i in range(128)]
-        self.server = ModelServer(self.cmd_queue, self.res_queues, load_snapshot=load_snapshot)
+        self.server = ModelServer(self.cmd_queue, self.res_queues, n_blocks, n_filters, load_snapshot=load_snapshot)
         self.server.start()
         self.ri = 0  # id of process in case of multiple processes, to prevent mixups
 
@@ -1026,7 +1031,7 @@ def gtp_io(net):
 
 
 if __name__ == "__main__":
-    net = GoModel(load_snapshot=sys.argv[2] if len(sys.argv) > 2 else None)
+    net = GoModel(n_blocks=N_BLOCKS, n_filters=N_FILTERS, load_snapshot=sys.argv[2] if len(sys.argv) > 2 else None)
     if len(sys.argv) < 2 or sys.argv[1] == "black":
         # Default action
         while True:

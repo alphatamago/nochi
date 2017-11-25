@@ -16,7 +16,7 @@ from keras.layers.merge import add
 # AlphaGo Zero style network
 
 class ResNet(object):
-    def __init__(self, input_N=256, filter_N=256, n_stages=19,
+    def __init__(self, input_N, filter_N, n_stages,
                  kernel_width=3, kernel_height=3,
                  inpkern_width=3, inpkern_height=3):
         # number of filters and dimensions of the initial input kernel
@@ -75,8 +75,10 @@ class ResNet(object):
 
 
 class AGZeroModel:
-    def __init__(self, N, batch_size=32, archive_fit_samples=64):
+    def __init__(self, N, n_blocks, n_filters, batch_size=32, archive_fit_samples=64):
         self.N = N
+        self.n_blocks = n_blocks
+        self.n_filters = n_filters
         self.batch_size = 32
 
         self.archive_fit_samples = archive_fit_samples
@@ -90,7 +92,7 @@ class AGZeroModel:
 
         N = self.N
         position = Input((N, N, 6))
-        resnet = ResNet(n_stages=N)
+        resnet = ResNet(n_stages=self.n_blocks, input_N=self.n_filters, filter_N=self.n_filters)
         resnet.create(N, N, 6)
         x = resnet.model(position)
 
